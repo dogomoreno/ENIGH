@@ -1,0 +1,419 @@
+# Paquetes requeridos
+if(!require('pacman')) install.packages('pacman')
+pacman::p_load(tidyverse, zip, readxl, 'Cairo',janitor, lubridate, zoo, scales, ggpmisc, ggtext, ggrepel, shinyWidgets, shinythemes, shiny, bslib)
+
+# 
+dir.create('~/.fonts')
+file.copy("www/Manrope-Bold.ttf", "~/.fonts")
+file.copy("www/Manrope-ExtraBold.ttf", "~/.fonts")
+file.copy("www/Manrope-ExtraLight.ttf", "~/.fonts")
+file.copy("www/Manrope-Light.ttf", "~/.fonts")
+file.copy("www/Manrope-Medium.ttf", "~/.fonts")
+file.copy("www/Manrope-Regular.ttf", "~/.fonts")
+file.copy("www/Manrope-SemiBold.ttf", "~/.fonts")
+file.copy("www/Poppins-ExtraBold.ttf", "~/.fonts")
+system('fc-cache -f ~/.fonts')
+# 
+# library(extrafont)
+# loadfonts()
+
+options(scipen=999)
+#showtext::showtext_opts(dpi = 400)
+guinda <-"#832347"
+verde <-"#097275"
+dorado <-"#CCB656"
+gris <-"#A8A8A7"
+naranja <-"#C96C1C"
+café <-"#7C5C15"
+
+library(Cairo)
+options(shiny.usecairo=TRUE)
+
+titulo <- "Poppins ExtraBold"
+negrita <- "Manrope Extrabold"
+ligera <- "Manrope Light"
+grafico <- "Roboto Condensed"
+normal <- "Manrope"
+
+
+temaejes <- theme(plot.margin = margin(10, 50, 10, 40),panel.grid=element_blank(), panel.border=element_blank(),
+                  axis.line= element_line(color = "black", size = 0.3),
+                  plot.title = element_markdown(family = titulo, size = 24, color="black"),
+                  plot.subtitle = element_markdown(family = titulo, size = 13, color = "black"), legend.title = element_blank(),
+                  strip.text = element_text(family = negrita, size = 10),
+                  axis.text.x = element_text(family = grafico, size =10),
+                  axis.text.y = element_text(family = grafico, size =10),
+                  axis.ticks.y = element_line(color=alpha(gris,0.2)),
+                  panel.grid.major.y= element_line(color=alpha(gris,0.2)),
+                  axis.line.y = element_blank(),
+                  plot.background = element_rect(fill = "white", color = "white", size = 3),
+                  axis.title.x = element_text(family = ligera, size = 12, hjust=1),
+                  axis.title.y = element_text(family = ligera, size = 12, hjust=0.5),
+                  plot.caption = element_text(family = ligera, size = 8),
+                  legend.text = element_blank(), legend.background =  element_rect(fill="transparent", color="transparent"),
+                  legend.box.background=  element_rect(fill="transparent", color="transparent" ),
+                  legend.key = element_rect(fill="transparent", color="transparent"),
+                  legend.position = "none", plot.title.position = 'plot', plot.caption.position = 'plot')
+
+
+# temaejes <- theme(plot.margin = margin(10, 50, 10, 40),panel.grid=element_blank(), panel.border=element_blank(),
+#                   axis.line= element_line(color = "black", size = 0.3),
+#                   plot.title = element_markdown(family = titulo, size = 28),
+#                   plot.subtitle = element_markdown(family = negrita, size = 16, color = "black"), legend.title = element_blank(),
+#                   strip.text = element_text(family = negrita, size = 14),
+#                   axis.text.x = element_text(family = grafico, size =12),
+#                   axis.text.y = element_text(family = grafico, size =12, color="black"),
+#                   axis.ticks.y = element_line(color="black"),
+#                   axis.line.y = element_blank(),
+#                   plot.background = element_rect(fill = "white", color = "white", size = 3),
+#                   axis.title.x = element_text(family = ligera, size = 12, hjust=0.5),
+#                   axis.title.y = element_text(family = ligera, size = 12, hjust=0.5),
+#                   plot.caption = element_text(family = ligera, size = 10),
+#                   legend.text = element_blank(), legend.background =  element_rect(fill="transparent", color="transparent"),
+#                   legend.box.background=  element_rect(fill="transparent", color="transparent" ),
+#                   legend.key = element_rect(fill="transparent", color="transparent"),
+#                   legend.position = "none", plot.title.position = 'plot', plot.caption.position = 'plot')
+
+
+
+CPE2018_2022 <- readRDS("CPE2018_2022.rds") %>% 
+  #mutate(across(c(original, modificado,devengado, pagado), ~round(.x/1000000,1))) %>% 
+  mutate(ejercicio=as.numeric(ejercicio)) %>% 
+  filter(ejercicio!=2018) %>% 
+  filter(!is.na(devengado))
+
+
+eje2022 <- CPE2018_2022  %>%
+  filter(ejercicio==2022) %>% 
+  summarise(presupuestado=sum(original), modificado=sum(modificado),  devengado=sum(devengado)) %>%
+  mutate(presupuestado=round(presupuestado,1),
+         modificado=round(presupuestado,1),
+         devengado=round(devengado,1)) 
+
+
+# partida_gen_sel= "TODAS LAS PARTIDAS GENÉRICAS"
+# partida_esp_sel= "TODAS LAS PARTIDAS ESPECÍFICAS"
+# capitulo_sel="TODOS LOS CAPÍTULOS"
+# deflactor_switch<-TRUE
+# dependencia_sel="GOBIERNO DEL ESTADO"
+
+deflactor <- read_csv("Datos/deflactor.csv")
+## GRAFICO GASTO PARTIDA----
+graf_linea <- function(adscripcion_sel,partida_gen_sel,partida_esp_sel,capitulo_sel,dependencia_sel, unidad_sel, deflactor_switch){
+
+gasto_total_ejercicio <- CPE2018_2022 %>% 
+  {if(adscripcion_sel != "TODAS LAS ADSCRIPCIONES") filter(., adscripcion==adscripcion_sel) else .} %>% 
+  {if(dependencia_sel != "TODOS LOS ENTES") filter(., dep_med==dependencia_sel) else .} %>% 
+  {if(unidad_sel !=  "TODAS LAS UNIDADES ADMINISTRATIVAS") filter(., unidad==unidad_sel) else .} %>%
+  {if(capitulo_sel != "TODOS LOS CAPÍTULOS") filter(., capitulo==capitulo_sel) else .} %>% 
+  {if(partida_gen_sel!= "TODAS LAS PARTIDAS GENÉRICAS") filter(., partida_generica==partida_gen_sel) else .} %>% 
+  {if(partida_esp_sel!= "TODAS LAS PARTIDAS ESPECÍFICAS") filter(., partida_especifica==partida_esp_sel) else .} %>% 
+  filter(ejercicio!=2018) %>% 
+  group_by(ejercicio) %>% 
+  summarise(presupuestado=sum(original), devengado=sum(devengado)) %>% 
+  mutate(diferencia = presupuestado-devengado) %>%
+  mutate(colordif=case_when(diferencia > 0 ~ "1",
+                         diferencia < 0 ~ "0"),
+         orden=case_when(diferencia > 0 ~ 0.01,
+                            diferencia < 0 ~ -0.01),
+         forma=case_when(diferencia > 0 ~ 25,
+                         diferencia < 0 ~ 24),
+         pct=round((-1*diferencia)/presupuestado,3)
+         ) %>% 
+  left_join(deflactor, by="ejercicio") %>% 
+  {if(deflactor_switch != FALSE) mutate(., presupuestado=round(presupuestado/deflactor,1), devengado=round(devengado/deflactor,1)) else .} %>% 
+  mutate(across(c(presupuestado, devengado), ~round(.x/1000000,1)))
+  
+titulo <- if_else(adscripcion_sel == "TODAS LAS ADSCRIPCIONES", paste0("<span style = 'font-size:18px'>GASTO PÚBLICO ESTATAL</span><br>GOBIERNO DEL ESTADO DE SONORA"),
+                  if_else(adscripcion_sel != "GOBIERNO DEL ESTADO" & dependencia_sel == "TODOS LOS ENTES",paste0("<span style = 'font-size:18px'>GOBIERNO DEL ESTADO DE SONORA</span><br>", paste(strwrap(adscripcion_sel, width = 50), collapse = "<br>")),
+                                  if_else(adscripcion_sel != "GOBIERNO DEL ESTADO" & dependencia_sel != "TODOS LOS ENTES" & unidad_sel ==  "TODAS LAS UNIDADES ADMINISTRATIVAS" , paste0("<span style = 'font-size:18px'>", adscripcion_sel, "</span><br>",paste(strwrap(dependencia_sel, width = 50), collapse = "<br>")),
+                                          paste0("<span style = 'font-size:18px'>", adscripcion_sel," - ",dependencia_sel, "</span><br>",paste(strwrap(unidad_sel, width = 50), collapse = "<br>"))
+                                          )
+                                                            )
+                  )  
+subsub <- if_else(capitulo_sel == "TODOS LOS CAPÍTULOS", "TODOS LOS CAPÍTULOS DE GASTO",
+                  if_else(capitulo_sel != "TODOS LOS CAPÍTULOS" & partida_gen_sel== "TODAS LAS PARTIDAS GENÉRICAS", capitulo_sel,
+                  ifelse( capitulo_sel != "TODOS LOS CAPÍTULOS" & partida_gen_sel!= "TODAS LAS PARTIDAS GENÉRICAS" & partida_esp_sel== "TODAS LAS PARTIDAS ESPECÍFICAS", partida_gen_sel,
+                          partida_esp_sel)))
+
+ytitle <- if_else(deflactor_switch != FALSE, "millones de pesos constantes de 2022 (mdp)","millones de pesos corrientes (mdp)" )
+
+linea_gasto <- ggplot(gasto_total_ejercicio,aes(group=1)) +
+  geom_segment(aes(x = ejercicio, y = presupuestado, xend = ejercicio, yend = devengado), color=gris, alpha=0.3, size=1.5) +
+  geom_line(aes(ejercicio, presupuestado), color=verde, alpha=0.2, size=0.6) +
+  geom_line(aes(ejercicio, devengado), color=guinda, alpha=0.2, size=0.6) +
+  geom_point(aes(ejercicio, presupuestado), color=verde, fill=verde,size=3, shape=22) +
+  geom_point(data=subset(gasto_total_ejercicio, diferencia<0),  aes(ejercicio, devengado), color=guinda, fill=guinda, size=3, shape=24) +
+  geom_point(data=subset(gasto_total_ejercicio, diferencia>0),aes(ejercicio, devengado), color=guinda, fill=guinda, size=3, shape=25) +
+  geom_text(data = gasto_total_ejercicio %>% filter(ejercicio == last(ejercicio)), aes(label =paste0( prettyNum(presupuestado, big.mar=","), " mdp"),
+                                                               x = ejercicio+0.1,
+                                                               y = presupuestado ), hjust=0 ,
+                                                               color = verde, family=negrita, size=4) +
+  geom_text(data = gasto_total_ejercicio %>% filter(ejercicio == last(ejercicio)), aes(label =paste0(prettyNum(devengado, big.mar=","), " mdp"),
+                                                                                                                    x = ejercicio+0.1,
+                                                                                                                    y = devengado), hjust=0,
+                                                                                                                    color = guinda, family=negrita, size=4) +
+  geom_richtext(data =  gasto_total_ejercicio %>% filter(pct>0), aes(label =paste0("*+",pct*100, "%*"),
+                                                                 x = ejercicio,
+                                                                 y = pmin(min(gasto_total_ejercicio$presupuestado), min(gasto_total_ejercicio$devengado ) )*0.75), 
+            hjust=0.5 ,color = guinda, family=negrita, size=4, fill = NA, label.color = NA) +
+  geom_richtext(data =  gasto_total_ejercicio %>% filter(pct<0), aes(label =paste0("*",pct*100, "%*"),
+                                                                 x = ejercicio,
+                                                                 y = pmin(min(gasto_total_ejercicio$presupuestado), min(gasto_total_ejercicio$devengado ) )*0.75), 
+            hjust=0.5 ,color = verde, family=negrita, size=4, fill = NA, label.color = NA) +
+  geom_richtext(data =  gasto_total_ejercicio %>% filter(pct==0), aes(label =paste0("*",pct*100, "%*"),
+                                                                  x = ejercicio,
+                                                                  y = pmin(min(gasto_total_ejercicio$presupuestado), min(gasto_total_ejercicio$devengado ) )*0.75), 
+            hjust=0.5 ,color = naranja, family=negrita, size=4, fill = NA, label.color = NA) +
+  geom_richtext(data =  gasto_total_ejercicio %>% filter(ejercicio == last(ejercicio)), aes(label ="*Diferencia*",
+                                                                                        x = ejercicio+0.3,
+                                                                                        y = pmin(min(gasto_total_ejercicio$presupuestado), min(gasto_total_ejercicio$devengado ) )*0.75),  
+            hjust=0, fill = NA, label.color = NA,
+            color = "black", family=normal, size=4) +
+                                                                 
+  scale_y_continuous(label=comma) +
+  scale_x_continuous(limits=c(2019, 2022.5), labels = c(2019,2020,2021,2022,"")) +
+  scale_color_manual(values=(c(guinda, verde)))+
+  theme_minimal() +
+  labs(
+       y=NULL, 
+       x=NULL,
+       #title= paste0("<span style = 'font-size:18px'>", adscripcion_sel," - ",dependencia_sel, "</span><br>",unidad_sel),
+       title=titulo,
+       subtitle= paste0("<span style = 'font-family:Manrope;'>PRESUPUESTO DE EGRESOS: </span><span style = 'color:#097275;'>APROBADO</span><span style = 'font-family:Manrope;'> Y </span><span style = 'color:#832347;'>DEVENGADO</span><br><span style = 'font-family:Manrope;font-size:14px;color:#CCB656;'>**",
+                        subsub,"**</span><br><span style = 'font-family:Manrope;font-size:12px'>Cifras en ", ytitle,"</span>"),
+       caption="Elaborado por ISAF con información de las Cuentas Públicas del Gobierno del Estado de Sonora 2019-2022.") +
+  temaejes
+  
+
+linea_gasto
+
+
+#ggsave(paste0(dependencia_sel,"_", capitulo_sel, "_",partida_gen_sel,"_",partida_esp_sel, ".png"), width = 5 * (16/9), height = 5, type = "cairo", dpi = 400)
+
+}
+#graf_linea(partida_gen_sel,partida_esp_sel,capitulo_sel,dependencia_sel, deflactor_switch)
+
+## GRAFICO GASTO programas----
+graf_prog <- function(finalidad_sel,funcion_sel,programa_sel,deflactor_switch2){
+  
+  gasto_total_programas <- CPE2018_2022 %>% 
+    {if(finalidad_sel != "TODAS LAS FINALIDADES") filter(., finalidad==finalidad_sel) else .} %>% 
+    {if(funcion_sel!= "TODAS LAS FUNCIONES") filter(., funcion==funcion_sel) else .} %>% 
+    {if(programa_sel != "TODOS LOS PROGRAMAS") filter(., programa==programa_sel) else .} %>% 
+    filter(ejercicio!=2018) %>% 
+    group_by(ejercicio) %>% 
+    summarise(presupuestado=sum(original), devengado=sum(devengado)) %>% 
+    mutate(diferencia = presupuestado-devengado) %>%
+    mutate(colordif=case_when(diferencia > 0 ~ "1",
+                              diferencia < 0 ~ "0"),
+           orden=case_when(diferencia > 0 ~ 0.01,
+                           diferencia < 0 ~ -0.01),
+           forma=case_when(diferencia > 0 ~ 25,
+                           diferencia < 0 ~ 24),
+           pct=round((-1*diferencia)/presupuestado,3)
+    ) %>% 
+    left_join(deflactor, by="ejercicio") %>% 
+    {if(deflactor_switch2 != FALSE) mutate(., presupuestado=round(presupuestado/deflactor,1), devengado=round(devengado/deflactor,1)) else .} %>% 
+    mutate(across(c(presupuestado, devengado), ~round(.x/1000000,1)))
+  
+  
+  
+  ytitle <- if_else(deflactor_switch2 != FALSE, "millones de pesos de 2022 ($)","millones de pesos corrientes ($)" )
+  
+  
+  
+  
+  linea_gasto <- ggplot( gasto_total_programas,aes(group=1)) +
+    geom_segment(aes(x = ejercicio, y = presupuestado, xend = ejercicio, yend = devengado), color=gris, alpha=0.3, size=1.5) +
+    geom_line(aes(ejercicio, presupuestado), color=verde, alpha=0.2, size=0.6) +
+    geom_line(aes(ejercicio, devengado), color=guinda, alpha=0.2, size=0.6) +
+    geom_point(aes(ejercicio, presupuestado), color=verde, fill=verde,size=3, shape=22) +
+    geom_point(data=subset( gasto_total_programas, diferencia<0),  aes(ejercicio, devengado), color=guinda, fill=guinda, size=3, shape=24) +
+    geom_point(data=subset( gasto_total_programas, diferencia>0),aes(ejercicio, devengado), color=guinda, fill=guinda, size=3, shape=25) +
+    geom_text(data =  gasto_total_programas %>% filter(ejercicio == last(ejercicio)), aes(label =paste0( prettyNum(presupuestado, big.mar=","), " mdp"),
+                                                                                         x = ejercicio+0.1,
+                                                                                         y = presupuestado ), hjust=0 ,
+              color = verde, family=negrita, size=4) +
+    geom_text(data =  gasto_total_programas %>% filter(ejercicio == last(ejercicio)), aes(label =paste0(prettyNum(devengado, big.mar=","), " mdp"),
+                                                                                         x = ejercicio+0.1,
+                                                                                         y = devengado), hjust=0,
+              color = guinda, family=negrita, size=4) +
+    geom_richtext(data =  gasto_total_programas %>% filter(pct>0), aes(label =paste0("*+",pct*100, "%*"),
+                                                                 x = ejercicio,
+                                                                 y = pmin(min(gasto_total_programas$presupuestado), min(gasto_total_programas$devengado ) )*0.75), 
+              hjust=0.5 ,color = guinda, family=negrita, size=4, fill = NA, label.color = NA) +
+    geom_richtext(data =  gasto_total_programas %>% filter(pct<0), aes(label =paste0("*",pct*100, "%*"),
+                                                                 x = ejercicio,
+                                                                 y = pmin(min(gasto_total_programas$presupuestado), min(gasto_total_programas$devengado ) )*0.75), 
+              hjust=0.5 ,color = verde, family=negrita, size=4, fill = NA, label.color = NA) +
+    geom_richtext(data =  gasto_total_programas %>% filter(pct==0), aes(label =paste0("*",pct*100, "%*"),
+                                                                  x = ejercicio,
+                                                                  y = pmin(min(gasto_total_programas$presupuestado), min(gasto_total_programas$devengado ) )*0.75), 
+              hjust=0.5 ,color = naranja, family=negrita, size=4, fill = NA, label.color = NA) +
+    geom_richtext(data =  gasto_total_programas %>% filter(ejercicio == last(ejercicio)), aes(label ="*Diferencia*",
+                                                                                        x = ejercicio+0.3,
+                                                                                        y = pmin(min(gasto_total_programas$presupuestado), min(gasto_total_programas$devengado ) )*0.75),  
+              hjust=0, fill = NA, label.color = NA,
+              color = "black", family=normal, size=4) +
+    scale_y_continuous(label=comma) +
+    scale_x_continuous(limits=c(2019, 2022.5), labels = c(2019,2020,2021,2022,"")) +
+    scale_color_manual(values=(c(guinda, verde)))+
+    theme_minimal() +
+    labs(y=NULL, 
+         x=NULL,
+         title= finalidad_sel,
+         subtitle= paste0("<span style = 'font-family:Manrope;'>EGRESOS DEL EJERCICICIO: </span><span style = 'color:#097275;'>APROBADO</span><span style = 'font-family:Manrope;'> Y </span><span style = 'color:#832347;'>DEVENGADO</span>", "<br>",
+                          "<span style = 'font-family:Manrope;font-size:14px'>",funcion_sel," - ",programa_sel,
+                          "<br><span style = 'font-family:Manrope;font-size:12px'>Cifras en ", ytitle,"</span>")) +
+    temaejes
+  
+  
+  linea_gasto
+  
+  
+  #ggsave(paste0(dependencia_sel,"_", capitulo_sel, "_",partida_gen_sel,"_",partida_esp_sel, ".png"), width = 5 * (16/9), height = 5, type = "cairo", dpi = 400)
+  
+}
+
+
+
+
+
+
+
+dic_dep <- read_csv("dic_dep.csv", col_types = cols(dep = col_character()), 
+                    locale = locale(encoding = "ISO-8859-1"))
+
+
+diccionario_gasto <-  unique(CPE2018_2022[,c("adscripcion","dep_med","unidad","capitulo", "partida_generica", "partida_especifica")])
+
+programas2022 <- CPE2018_2022 %>% 
+  filter(ejercicio==2022)
+
+diccionario_programas <-  unique(programas2022[,c( "finalidad","funcion", "programa")])
+
+#graf_linea(partida_gen_sel,partida_esp_sel,capitulo_sel,dependencia_sel)
+
+
+custom_theme <- bs_theme(
+  version = 5,
+  bg = "white",
+  fg = verde,
+  primary = guinda,
+  secondary = dorado,
+  success = verde,
+  base_font = "Manrope",
+  font_scale=1
+)
+
+
+# disposicion_sel="TRANSFERENCIAS FEDERALES ETIQUETADAS"
+# tipo_sel="APORTACIONES"
+# subtipo_sel= "TODOS LOS SUBTIPOS"
+# deflactor_switch3=TRUE
+
+ingresos <- read_csv("Datos/GOBSON/analitico_ingresos.csv") %>% clean_names() %>% 
+  mutate(disposicion=toupper(disposicion),
+         tipo=toupper(tipo),
+         subtipo=toupper(subtipo))
+
+
+ingresos_graf <- function(disposicion_sel,tipo_sel,subtipo_sel, deflactor_switch3){
+  
+  ingreso_total_rubro <- ingresos %>% 
+    {if(disposicion_sel != "TODOS LOS INGRESOS") filter(., disposicion==disposicion_sel) else .} %>% 
+    {if(tipo_sel!= "TODOS LOS TIPOS") filter(., tipo==tipo_sel) else .} %>% 
+    {if(subtipo_sel != "TODOS LOS SUBTIPOS") filter(., subtipo==subtipo_sel) else .} %>% 
+    group_by(ejercicio) %>% 
+    summarise(estimado=sum(estimado), recaudado=sum(recaudado)) %>% 
+    mutate(diferencia = estimado-recaudado) %>%
+    mutate(colordif=case_when(diferencia > 0 ~ "1",
+                              diferencia < 0 ~ "0"),
+           orden=case_when(diferencia > 0 ~ 0.01,
+                           diferencia < 0 ~ -0.01),
+           forma=case_when(diferencia > 0 ~ 25,
+                           diferencia < 0 ~ 24),
+           pct=round((-1*diferencia)/estimado,3)
+    ) %>% 
+    left_join(deflactor, by="ejercicio") %>% 
+    {if(deflactor_switch3 != FALSE) mutate(., estimado=round(estimado/deflactor,1), recaudado=round(recaudado/deflactor,1)) else .} %>% 
+    mutate(across(c(estimado, recaudado), ~round(.x/1000000,1)))
+  
+  
+  
+  titulo <- if_else(disposicion_sel == "TODOS LOS INGRESOS", paste0("<span style = 'font-size:18px'>INGRESO TOTAL</span><br>GOBIERNO DEL ESTADO DE SONORA"),
+                    if_else(disposicion_sel != "TODOS LOS INGRESOS" & tipo_sel == "TODOS LOS TIPOS",paste0("<span style = 'font-size:18px'>GOBIERNO DEL ESTADO DE SONORA</span><br>", paste(strwrap(disposicion_sel, width = 50), collapse = "<br>")),
+                                    if_else(disposicion_sel != "TODOS LOS INGRESOS" & tipo_sel != "TODOS LOS TIPOS" & subtipo_sel ==  "TODOS LOS SUBTIPOS" , paste0("<span style = 'font-size:18px'>GOBIERNO DEL ESTADO DE SONORA - ", disposicion_sel, "</span><br>",paste(strwrap(tipo_sel, width = 50), collapse = "<br>")),
+                                            paste0("<span style = 'font-size:18px'>", disposicion_sel," - ",tipo_sel, "</span><br>",paste(strwrap(subtipo_sel, width = 50), collapse = "<br>"))
+                                    )
+                                              )
+  )  
+  # subsub <- if_else(capitulo_sel == "TODOS LOS CAPÍTULOS", "TODOS LOS CAPÍTULOS DE GASTO",
+  #                   if_else(capitulo_sel != "TODOS LOS CAPÍTULOS" & partida_gen_sel== "TODAS LAS PARTIDAS GENÉRICAS", capitulo_sel,
+  #                           ifelse( capitulo_sel != "TODOS LOS CAPÍTULOS" & partida_gen_sel!= "TODAS LAS PARTIDAS GENÉRICAS" & partida_esp_sel== "TODAS LAS PARTIDAS ESPECÍFICAS", partida_gen_sel,
+  #                                   partida_esp_sel)))
+  
+  ytitle <- if_else(deflactor_switch3 != FALSE, "millones de pesos constantes de 2022 (mdp)","millones de pesos corrientes (mdp)" )
+  
+  
+  
+  
+  
+  linea_ingresos <- ggplot( ingreso_total_rubro,aes(group=1)) +
+    geom_segment(aes(x = ejercicio, y = estimado, xend = ejercicio, yend = recaudado), color=gris, alpha=0.3, size=1.5) +
+    geom_line(aes(ejercicio, estimado), color=verde, alpha=0.2, size=0.6) +
+    geom_line(aes(ejercicio, recaudado), color=guinda, alpha=0.2, size=0.6) +
+    geom_point(aes(ejercicio, estimado), color=verde, fill=verde,size=3, shape=22) +
+    geom_point(data=subset( ingreso_total_rubro, diferencia<0),  aes(ejercicio, recaudado), color=guinda, fill=guinda, size=3, shape=24) +
+    geom_point(data=subset( ingreso_total_rubro, diferencia>0),aes(ejercicio, recaudado), color=guinda, fill=guinda, size=3, shape=25) +
+    geom_text(data =  ingreso_total_rubro %>% filter(ejercicio == last(ejercicio)), aes(label =paste0( prettyNum(estimado, big.mar=","), " mdp"),
+                                                                                          x = ejercicio+0.1,
+                                                                                          y = estimado ), hjust=0 ,
+              color = verde, family=negrita, size=4) +
+    geom_text(data =  ingreso_total_rubro %>% filter(ejercicio == last(ejercicio)), aes(label =paste0(prettyNum(recaudado, big.mar=","), " mdp"),
+                                                                                          x = ejercicio+0.1,
+                                                                                          y = recaudado), hjust=0,
+              color = guinda, family=negrita, size=4) +
+    geom_richtext(data =  ingreso_total_rubro %>% filter(pct>0), aes(label =paste0("*+",pct*100, "%*"),
+                                                                                        x = ejercicio,
+                                                                                        y = pmin(min(ingreso_total_rubro$estimado), min(ingreso_total_rubro$recaudado ) )*0.75), 
+                                                                 hjust=0.5 ,color = guinda, family=negrita, size=4, fill = NA, label.color = NA) +
+    geom_richtext(data =  ingreso_total_rubro %>% filter(pct<0), aes(label =paste0("*",pct*100, "%*"),
+                                                                 x = ejercicio,
+                                                                 y = pmin(min(ingreso_total_rubro$estimado), min(ingreso_total_rubro$recaudado ) )*0.75), 
+              hjust=0.5 ,color = verde, family=negrita, size=4, fill = NA, label.color = NA) +
+    geom_richtext(data =  ingreso_total_rubro %>% filter(pct==0), aes(label =paste0("*",pct*100, "%*"),
+                                                                 x = ejercicio,
+                                                                 y = pmin(min(ingreso_total_rubro$estimado), min(ingreso_total_rubro$recaudado ) )*0.75), 
+              hjust=0.5 ,color = naranja, family=negrita, size=4, fill = NA, label.color = NA) +
+    geom_richtext(data =  ingreso_total_rubro %>% filter(ejercicio == last(ejercicio)), aes(label ="*Diferencia*",
+                                                                                        x = ejercicio+0.3,
+                                                                                        y = pmin(min(ingreso_total_rubro$estimado), min(ingreso_total_rubro$recaudado ) )*0.75),
+              color = "black", family=normal, size=4, fill = NA, label.color = NA) +
+    
+    scale_y_continuous(label=comma) +
+    scale_x_continuous(limits=c(2019, 2022.5), labels = c(2019,2020,2021,2022,"")) +
+    scale_color_manual(values=(c(guinda, verde)))+
+    theme_minimal() +
+    labs(
+      y=NULL, 
+      x=NULL,
+      #title= paste0("<span style = 'font-size:18px'>", adscripcion_sel," - ",dependencia_sel, "</span><br>",unidad_sel),
+      title=titulo,
+      subtitle= paste0("<span style = 'font-family:Manrope;'>PRESUPUESTO DE INGRESOS: </span><span style = 'color:#097275;'>ESTIMADO</span><span style = 'font-family:Manrope;'> Y </span><span style = 'color:#832347;'>RECAUDADO</span><br><span style = 'font-family:Manrope;font-size:12px'>Cifras en ", ytitle,"</span>"),
+      caption="Elaborado por ISAF con información de las Cuentas Públicas del Gobierno del Estado de Sonora 2019-2022.") +
+    temaejes
+  
+  
+  linea_ingresos
+  
+  
+  #ggsave(paste0(dependencia_sel,"_", capitulo_sel, "_",partida_gen_sel,"_",partida_esp_sel, ".png"), width = 5 * (16/9), height = 5, type = "cairo", dpi = 400)
+  
+}
+
+
+diccionario_ingresos <-  unique(ingresos[,c( "disposicion","tipo", "subtipo")])
+
+

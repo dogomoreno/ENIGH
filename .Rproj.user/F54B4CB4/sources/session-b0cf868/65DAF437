@@ -1,0 +1,26 @@
+{
+    "id": "65DAF437",
+    "path": "E:/R projects/ENSU/scripts/inseg_deli.R",
+    "project_path": null,
+    "type": "r_source",
+    "hash": "3183794646",
+    "contents": "",
+    "dirty": true,
+    "created": 1690324471364.0,
+    "source_on_save": false,
+    "relative_order": 4,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "168,48",
+        "scrollLine": "160"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1690311958,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1690311958,
+    "read_only": false,
+    "read_only_alternatives": []
+}

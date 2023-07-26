@@ -1,0 +1,91 @@
+library(tidyverse)
+library(extrafont)
+library(scales)
+library(showtext)
+library(tint)
+library(miniUI)
+library(units)
+library(reactable)
+library(zoo)
+library(lubridate)
+library(wesanderson)
+library(ggsci)
+library(RColorBrewer)
+library(directlabels)
+library('Cairo')
+library(rcartocolor)
+
+
+concentrado <- read_csv("01Datos/Decesos.csv", 
+                        locale = locale(encoding = "ISO-8859-1"))
+
+# concentrado <- 
+#   concentrado %>% 
+#   mutate(MES = case_when(MES == 1 ~ "01",
+#                          MES == 2 ~ "02",
+#                          MES == 3 ~ "03",
+#                          MES == 4 ~ "04",
+#                          MES == 5 ~ "05",
+#                          MES == 6 ~ "06",
+#                          MES == 7 ~ "07",
+#                          MES == 8 ~ "08",
+#                          MES == 9 ~ "09",
+#                          MES == 10 ~ "10",
+#                          MES == 11 ~ "11",
+#                          MES == 12 ~ "12"))
+
+concentrado <- concentrado %>%  filter(AÑO > 2014)
+lim <- c(1-1, 12+1)
+Exceso <- ggplot(concentrado) +
+  geom_line(mapping = aes(x = MES, y = Decesos, group= AÑO, color= as.factor(AÑO)), size=1.5, alpha=0.8) +
+  geom_point(mapping = aes(x = MES, y = Decesos, group= AÑO, fill= as.factor(AÑO)),color="white", size=2, alpha=1, shape=21, stroke=0.8) +
+  geom_dl(aes(x = MES, y = Decesos, label =as.factor(AÑO), color=as.factor(AÑO)), method = list(dl.trans(x = x + 0.2), "last.bumpup", cex = 0.6, fontfamily= "Lato Black")) +
+  scale_color_carto_d( palette = "Burg")  +
+  scale_fill_carto_d( palette = "Burg")  +
+    scale_x_continuous(breaks = seq(from = 1, to=12, by=1), expand=c(0,0), limits = lim) +
+  scale_y_continuous(breaks = seq(from = 0, to=5000, by=500), labels=comma) +
+  theme_light() +
+  theme(axis.line = element_line(linetype = "solid"), plot.margin = margin(0.8, 0.5, 0.5, 0.5, "cm"),  
+        panel.border = element_rect(color="transparent"), plot.background = element_rect(fill = "white", color = "black", size = 2.5),
+        plot.title = element_text(family = "Lato Black", size = 22,color = "#993366"), panel.grid.major.x = element_blank(), panel.grid.minor.x = element_blank(),
+        plot.subtitle = element_text(family = "Lato Light", size = 12, color = "black"), legend.title = element_blank(),
+        strip.text = element_text(family = "Lato Black", size = 10),
+        axis.text.x = element_text(family = "Lato", size =8),
+        axis.text.y = element_text(family = "Lato", size =8, hjust=0.5),
+        axis.title.x = element_text(family = "Lato Light", size = 8, hjust=1),
+        axis.title.y = element_text(family = "Lato Light", size = 8, hjust=1), 
+        plot.caption = element_text(family = "Lato", size = 6, color = "#993366"),
+        legend.text = element_text(family = "Lato", size = 8),
+        legend.position = "none", legend.justification="left", legend.background = element_rect(fill = "transparent")) +
+  labs(y = "Actas de defunción", 
+       x = "Mes",legend= NULL, title  = "En Sonora se registraron 4,281 decesos en julio de 2020\n casi 3 veces más respecto al mismo mes del año anterior", 
+       subtitle= "Actas de defunción expedidas mensualmente en la Entidad por todas las causas.", caption ="Fuente: Secretaría de Gobierno del Estado de Sonora mediante solicitud de información 00112221\nwww.luisarmandomoreno.com")
+Exceso
+ggsave("exceso.png",Exceso, bg = "transparent", height = 5, width = 5*(16/9), type= 'cairo')
+
+
+SonoraA <- concentrado %>%  group_by(AÑO) %>% summarise(Decesos=sum(Decesos))
+
+Exceso2 <- ggplot(SonoraA, aes(x= AÑO, y= Decesos)) +
+  geom_col(aes (fill= as.factor(AÑO), color=as.factor(AÑO)), alpha=0.8, linetype= "solid", width = 0.5)+
+  geom_text(aes(label=comma(Decesos)),position = position_dodge(width = 1),
+            vjust = -0.5, size = 4, family="Lato Black") + 
+  scale_fill_carto_d( palette = "Burg")  +
+  scale_color_carto_d( palette = "Burg")  +
+  scale_x_continuous(breaks = seq(from = 2015, to = 2020, by = 1)) +
+  scale_y_continuous (expand = c(0,0), limits = c(0,30000)) +
+  theme_void() +
+  theme(plot.margin = margin(0.8, 1, 0.5, 1.5, "cm"),
+        plot.title = element_text(family = "Lato Black", size = 22,color = "#993366"), 
+        plot.subtitle = element_text(family = "Lato Light", size = 12, color = "black"), axis.line.x = element_line(linetype = "solid"),
+        axis.text.y = element_blank(), axis.text.x = element_text(family = "Lato", size =10,margin=margin(5,0,0,0)),
+        axis.title.x = element_text(family = "Lato Light", size = 6, hjust=1),
+        axis.title.y = element_text(family = "Lato Light", size = 8, hjust=1), legend.position = "none",
+        plot.background = element_rect(fill = "white", color = "black", size = 2.5),
+        plot.caption = element_text(family = "Lato", size = 6, color = "#993366")) +
+  labs(y = NULL, 
+       x = NULL,legend= NULL, title  = "La mortalidad en Sonora aumentó 46%\nen 2020 respecto al año anterior", 
+       subtitle= "Actas de defunción expedidas anualmente en la Entidad por todas las causas.", caption ="Fuente: Secretaría de Gobierno del Estado de Sonora mediante solicitud de información 00112221\nwww.luisarmandomoreno.com")
+Exceso2
+ggsave("exceso2.png",Exceso2, bg = "transparent", height = 5, width = 5*(16/9), type= 'cairo')
+

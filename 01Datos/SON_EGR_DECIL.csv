@@ -1,0 +1,177 @@
+Rubro,DECILES,pctjGasto
+"Alimentos, bebidas
+y tabaco",I,0.44484969
+"Vestido y
+calzado",I,0.021680554
+"Vivienda, combustibles,
+energía eléctrica",I,0.167665818
+"Limpieza, cuidados de la casa,
+enseres, muebles",I,0.058614543
+Salud,I,0.023067537
+"Transporte, vehículos,
+comunicaciones",I,0.144762986
+"Educación y
+esparcimiento",I,0.031200218
+"Cuidados personales
+y otros",I,0.08466453
+Transferencias,I,0.023494123
+"Alimentos, bebidas
+y tabaco",II,0.437358238
+"Vestido y
+calzado",II,0.019878292
+"Vivienda, combustibles,
+energía eléctrica",II,0.187281136
+"Limpieza, cuidados de la casa,
+enseres, muebles",II,0.058306852
+Salud,II,0.028617182
+"Transporte, vehículos,
+comunicaciones",II,0.151163878
+"Educación y
+esparcimiento",II,0.026607208
+"Cuidados personales
+y otros",II,0.075279356
+Transferencias,II,0.015507858
+"Alimentos, bebidas
+y tabaco",III,0.416667131
+"Vestido y
+calzado",III,0.018024525
+"Vivienda, combustibles,
+energía eléctrica",III,0.165751487
+"Limpieza, cuidados de la casa,
+enseres, muebles",III,0.065749312
+Salud,III,0.031018193
+"Transporte, vehículos,
+comunicaciones",III,0.162715988
+"Educación y
+esparcimiento",III,0.046694062
+"Cuidados personales
+y otros",III,0.073330439
+Transferencias,III,0.020048863
+"Alimentos, bebidas
+y tabaco",IV,0.39693143
+"Vestido y
+calzado",IV,0.022770772
+"Vivienda, combustibles,
+energía eléctrica",IV,0.159159153
+"Limpieza, cuidados de la casa,
+enseres, muebles",IV,0.061943288
+Salud,IV,0.03086891
+"Transporte, vehículos,
+comunicaciones",IV,0.179836676
+"Educación y
+esparcimiento",IV,0.036647093
+"Cuidados personales
+y otros",IV,0.087444292
+Transferencias,IV,0.024398385
+"Alimentos, bebidas
+y tabaco",V,0.400157304
+"Vestido y
+calzado",V,0.022026798
+"Vivienda, combustibles,
+energía eléctrica",V,0.168687094
+"Limpieza, cuidados de la casa,
+enseres, muebles",V,0.056643209
+Salud,V,0.02895551
+"Transporte, vehículos,
+comunicaciones",V,0.16856373
+"Educación y
+esparcimiento",V,0.04708622
+"Cuidados personales
+y otros",V,0.085407668
+Transferencias,V,0.022472466
+"Alimentos, bebidas
+y tabaco",VI,0.380359905
+"Vestido y
+calzado",VI,0.024787468
+"Vivienda, combustibles,
+energía eléctrica",VI,0.146470491
+"Limpieza, cuidados de la casa,
+enseres, muebles",VI,0.063875989
+Salud,VI,0.036249861
+"Transporte, vehículos,
+comunicaciones",VI,0.18790207
+"Educación y
+esparcimiento",VI,0.059026206
+"Cuidados personales
+y otros",VI,0.076648823
+Transferencias,VI,0.024679187
+"Alimentos, bebidas
+y tabaco",VII,0.358423491
+"Vestido y
+calzado",VII,0.028105253
+"Vivienda, combustibles,
+energía eléctrica",VII,0.143179534
+"Limpieza, cuidados de la casa,
+enseres, muebles",VII,0.056795014
+Salud,VII,0.033358527
+"Transporte, vehículos,
+comunicaciones",VII,0.207290396
+"Educación y
+esparcimiento",VII,0.058861504
+"Cuidados personales
+y otros",VII,0.083704573
+Transferencias,VII,0.030281709
+"Alimentos, bebidas
+y tabaco",VIII,0.30996313
+"Vestido y
+calzado",VIII,0.024771206
+"Vivienda, combustibles,
+energía eléctrica",VIII,0.148806132
+"Limpieza, cuidados de la casa,
+enseres, muebles",VIII,0.071864253
+Salud,VIII,0.035182036
+"Transporte, vehículos,
+comunicaciones",VIII,0.216025057
+"Educación y
+esparcimiento",VIII,0.070007764
+"Cuidados personales
+y otros",VIII,0.086757136
+Transferencias,VIII,0.036623286
+"Alimentos, bebidas
+y tabaco",IX,0.307479471
+"Vestido y
+calzado",IX,0.029768125
+"Vivienda, combustibles,
+energía eléctrica",IX,0.121034678
+"Limpieza, cuidados de la casa,
+enseres, muebles",IX,0.065334981
+Salud,IX,0.028613669
+"Transporte, vehículos,
+comunicaciones",IX,0.232107121
+"Educación y
+esparcimiento",IX,0.102400069
+"Cuidados personales
+y otros",IX,0.074540888
+Transferencias,IX,0.038720999
+"Alimentos, bebidas
+y tabaco",X,0.243993243
+"Vestido y
+calzado",X,0.023734602
+"Vivienda, combustibles,
+energía eléctrica",X,0.12147155
+"Limpieza, cuidados de la casa,
+enseres, muebles",X,0.062622264
+Salud,X,0.047652115
+"Transporte, vehículos,
+comunicaciones",X,0.221547764
+"Educación y
+esparcimiento",X,0.125347707
+"Cuidados personales
+y otros",X,0.069132134
+Transferencias,X,0.084498622
+"Alimentos, bebidas
+y tabaco",ESTATAL,0.332959613
+"Vestido y
+calzado",ESTATAL,0.024487609
+"Vivienda, combustibles,
+energía eléctrica",ESTATAL,0.142370441
+"Limpieza, cuidados de la casa,
+enseres, muebles",ESTATAL,0.063069635
+Salud,ESTATAL,0.035577611
+"Transporte, vehículos,
+comunicaciones",ESTATAL,0.201773565
+"Educación y
+esparcimiento",ESTATAL,0.078583737
+"Cuidados personales
+y otros",ESTATAL,0.077655174
+Transferencias,ESTATAL,0.043522613

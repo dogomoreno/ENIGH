@@ -1,0 +1,186 @@
+# Paquetes requeridos
+
+
+if(!require('pacman')) install.packages('pacman')
+pacman::p_load(tidyverse, zip, readxl, 'Cairo',janitor, lubridate, zoo, scales, ggpmisc, ggtext, srvyr, ggrepel, gganimate)
+
+#font_paths("C:\\Users\\luism\\AppData\\Local\\Microsoft\\Windows\\Fonts")
+## font
+
+# font_families_google() %>% head()
+# 
+# font_add_google(name = "Manrope",   # Name of the font on the Google Fonts site
+#                 family = "Manrope") # Name you want to use to call the font
+# 
+# 
+# font_add(family = "Lato", # Name you want to use 
+#          regular = "Lato-Regular.ttf")
+# 
+# 
+# font_add(family = "Lato Black", # Name you want to use 
+#          regular = "Lato-Black.ttf")
+# 
+# font_add(family = "Lato Light", # Name you want to use 
+#          regular = "Lato-Light.ttf")
+# 
+# 
+# font_add(family = "Roboto Condensed", # Name you want to use 
+#          regular = "RobotoCondensed-Regular.ttf")
+
+
+titulo <- "Lato Black"
+negrita <- "Lato Black"
+ligera <- "Lato Light"
+grafico <- "Roboto Condensed"
+normal <- "Lato"
+
+
+temaejes <- theme(plot.margin = margin(10, 50, 10, 40),
+                  #panel.grid=element_blank(), 
+                  panel.border=element_blank(), 
+                  axis.line= element_line(color = "black", size = 0.3),
+                  plot.title = element_markdown(family = titulo, size = 26),  
+                  plot.subtitle = element_text(family = ligera, size = 10, color = "gray40"), 
+                  legend.title = element_blank(),
+                  strip.text = element_text(family = negrita, size = 8, hjust=0),
+                  axis.text.x = element_text(family = grafico, size =8),
+                  axis.text.y = element_text(family = grafico, size =8, color="black"),
+                  axis.ticks.y = element_line(color="black"),
+                  #axis.line.y = element_blank(),
+                  plot.background = element_rect(fill = "white", color = "white", size = 3),
+                  panel.background = element_rect(fill="white", color = "gray95", size = 0.5),
+                  axis.title.x = element_markdown(family = normal, size = 10, hjust=0.5, color="black"),
+                  axis.title.y = element_markdown(family = normal, size = 10, hjust=0.5, color="black"), 
+                  plot.caption = element_text(family = ligera, size = 8),
+                  legend.text = element_blank(), 
+                  legend.background =  element_rect(fill="transparent", color="transparent"),
+                  legend.box.background=  element_rect(fill="transparent", color="transparent" ), 
+                  legend.key = element_rect(fill="transparent", color="transparent"),
+                  legend.position = "none", 
+                  plot.title.position = 'plot', 
+                  plot.caption.position = 'plot')
+
+
+
+ENSU_CB <- readRDS("data/ENSU_NAL.rds") %>% 
+  mutate(fac_sel=as.numeric(fac_sel),
+         est_dis=as.numeric(est_dis),
+         upm_dis=as.numeric(upm_dis),
+         edad=as.numeric(edad)) %>% 
+  mutate(grupo_edad = case_when(edad<30 ~ "18-29",
+                                edad>=30 & edad <"40"~ "30-39",
+                                edad>=40 & edad <"50"~ "40-49",
+                                edad>= 50  & edad <"60"~ "50-59",
+                                edad>= 60 ~ "60 o más\naños"))
+
+
+
+
+mydesign <-ENSU_CB  %>% 
+  as_survey_design(ids=upm_dis, # Unidad primaria de muestreo
+                   strata=est_dis, # Estrato
+                   weights=fac_sel, # Factor de expansión
+                   nest=TRUE)
+
+
+inseguridad <- mydesign  %>% # Filtramos viviendas con agua entubada conectada al servicio público y con jefatura femenina 
+  group_by(periodo, cd, bp1_1) %>%  # agrupamos por municipio
+  summarise(total= survey_total()) %>% 
+  mutate(bp1_1=as.numeric(bp1_1)) %>% 
+  select(-total_se) %>% ungroup() %>% 
+  group_by(cd, periodo) %>% 
+  summarise(inseguridad=100*round(sum(total[bp1_1==2])/sum(total),3))  
+
+
+
+delincuencia <- mydesign  %>% # Filtramos viviendas con agua entubada conectada al servicio público y con jefatura femenina 
+  group_by(periodo, cd, bp3_1_12) %>%  # agrupamos por municipio
+  summarise(total= survey_total()) %>% 
+  filter(!is.na(bp3_1_12)) %>% 
+  mutate(bp3_1_12=as.numeric(bp3_1_12)) %>% 
+  select(-total_se) %>% ungroup() %>% 
+  group_by(cd, periodo) %>% 
+  summarise(delincuencia=100*round(sum(total[bp3_1_12==1])/sum(total),3))
+
+
+inseg_deli <- delincuencia %>% left_join(inseguridad, by = c("periodo", "cd")) 
+
+ENSU_trim <- ENSU_CB %>% filter(per=="0223")
+
+ciudad_estado <- unique(ENSU_trim[c("cve_ent","nom_ent","cd", "nom_cd")])
+
+
+inseg_deli <- inseg_deli %>% left_join(ciudad_estado, by ="cd") %>% 
+  mutate(inseguridad=inseguridad/100, delincuencia=delincuencia/100)
+
+subtitulo <- "Porcentaje de la población de 18 años y más que considera considera inseguro vivir en la ciudad\nque reside y que la problemática de delincencia es las más importantes que enfrenta la ciudad.\nTodas las ciudades encuestadas." 
+
+trimestre <- inseg_deli %>% filter(periodo == as.Date("2023-06-01")) 
+#showtext::showtext_auto()
+#showtext::showtext_opts(dpi = 400)
+inseg_deli <-  ggplot(data=trimestre, aes( inseguridad,delincuencia)) + 
+  geom_hline(yintercept=.5,  color = alpha("black",0.7)) +
+  geom_vline(xintercept=.5,  color = alpha("black",0.7)) +
+  geom_point(data=subset(trimestre, cve_ent!=26), color=alpha("#DC7F37", 0.4)) +
+  geom_point(data=subset(trimestre, cve_ent==26), color="#01787E", size=2.5) +
+  geom_smooth(method= "lm", color=alpha("#DC7F37", 0.8), se=FALSE) +
+  geom_text(data=subset(trimestre, cve_ent==26), aes(label=nom_cd, x=inseguridad-0.015, y= delincuencia), family="Lato Black", color="#01787E", size=4, hjust=1) + 
+    scale_x_continuous(limits=c(0, 1), expand = c(0,0),labels = scales::percent) +
+    scale_y_continuous(limits=c(0, 1), expand = c(0,0),labels = scales::percent) +      
+  theme_linedraw() +
+    temaejes +
+    labs(y="La <span style = 'color:#01787E'>delincuencia</span> es un problema muy importante en la ciudad (%)",
+         x= "Considera <span style = 'color:#01787E'>inseguro</span> vivir en la ciudad donde reside (%)", 
+         title  = "<span style = 'font-size:14pt'>ENSU - II TRIMESTRE 2023</span><br><span style = 'color:#01787E'>Percepción de inseguridad y<br>problemática de delincuencia</span>", 
+         subtitle= subtitulo,
+         caption ="Elaborado por Luis Armando Moreno (@SonoraenDatos)\ncon información de la Encuesta Nacional de Seguridad Pública Urbana (IIT-2023) de INEGI.")
+
+pngfile <- here::here("img", "inseg_deli5.png")
+# Initialize device
+ragg::agg_png(
+  pngfile, width = 8, height = 8, units = "in",
+  res = 400
+)
+inseg_deli 
+# Close device
+invisible(dev.off())
+  
+
+
+ragg::agg_png( width =8, height = 8, res = 400, units = "in")  
+  
+  ggsave("inseg_deli4.png", device = png)
+  
+  showtext::showtext_auto()
+anim <-ggplot(data=inseg_deli, aes( inseguridad,delincuencia)) + 
+    geom_hline(yintercept=.5,  color = alpha("black",0.7)) +
+    geom_vline(xintercept=.5,  color = alpha("black",0.7)) +
+    geom_point(data=subset(inseg_deli, cve_ent!=26), color=alpha("#DC7F37", 0.4)) +
+    geom_point(data=subset(inseg_deli, cve_ent==26), color="#01787E", size=2) +
+    #geom_smooth(method= "lm", color=alpha("#DC7F37", 0.8), se=FALSE) +
+    geom_text(data=subset(inseg_deli, cve_ent==26), aes(label=nom_cd, y=delincuencia+.05), family="Lato Black", color="#01787E", size=5) + 
+    #geom_text(x=.8, y=.2,label='Cylinders: {closest_state}', family="Lato Black", color="black", size=5) + 
+    scale_x_continuous(limits=c(0, 1), expand = c(0,0),labels = scales::percent) +
+    scale_y_continuous(limits=c(0, 1), expand = c(0,0),labels = scales::percent) +      
+    theme_linedraw() +
+    temaejes +
+    labs(y="La <span style = 'color:#01787E'>delincuencia</span> es un problema muy importante en la ciudad (%)",
+         x= "Considera <span style = 'color:#01787E'>inseguro</span> vivir en la ciudad donde reside (%)", 
+         title  = "<span style = 'font-size:10pt'>ENSU - {closest_state}</span><br><span style = 'color:#01787E'>Percepción de inseguridad y<br>problemática de delincuencia</span>", 
+         subtitle= subtitulo,
+         caption ="Elaborado por Luis Armando Moreno (@SonoraenDatos)\ncon información de la Encuesta Nacional de Seguridad Pública Urbana (IIT-2023) de INEGI.") +
+      transition_states(
+    periodo,
+    transition_length = 9,
+    state_length = 1
+  ) +
+  #shadow_mark() +
+    ease_aes('linear')
+  
+  gifincisem <- animate( anim, width = 3000, height =3000, renderer =  gifski_renderer(), device='ragg_png')
+  anim_save("./inseg_deli.gif",   gifincisem)
+  
+  
+  
+  ggsave("inseg_deli.png", type = "cairo", dpi = 400)  
+  
